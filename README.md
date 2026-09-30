@@ -27,13 +27,13 @@ and "passthrough" mode (vfio-pci) and back.
 Switching the dGPU to `vfio-pci` is only reliable **at boot**, before the
 display manager or the compositor touch the GPU. The flow is:
 
-1. `gpu-switch.sh vfio` writes `vfio` to `/etc/gpu-vfio-mode` and reboots.
+1. `win11.sh start` (or `gpu-switch.sh vfio`) writes `vfio` to `/etc/gpu-vfio-mode` and reboots.
 2. At boot, `gpu-vfio-boot.service` (ordered before the display manager and
    `cardwired`) runs `gpu-vfio-boot.sh`, which reads the state file, unloads
    the `nvidia*` modules and binds the GPU and its HDMI audio function to
    `vfio-pci` via `driver_override` + `drivers_probe`.
 3. The host stays on the Intel iGPU; the dGPU is ready to be assigned.
-4. `gpu-switch.sh release` gives the GPU back to `nvidia` without rebooting
+4. `win11.sh release` (or `gpu-switch.sh release`) gives the GPU back to `nvidia` without rebooting
    and sets cardwire back to `hybrid`.
 
 PCI addresses used (adapt them to your system with `lspci -nn`):
@@ -41,11 +41,31 @@ PCI addresses used (adapt them to your system with `lspci -nn`):
 - GPU video: `0000:01:00.0`
 - GPU audio: `0000:01:00.1`
 
+## The `win11.sh` script
+
+`win11.sh` is the all-in-one control script. It assumes a libvirt VM named
+`win11` and the two PCI addresses above (both are variables at the top).
+`gpu-switch.sh` is the same GPU logic without anything VM related.
+
+| Command | What it does |
+|---|---|
+| `status` | shows the driver bound to the GPU and audio functions, and whether the VM is running |
+| `start` | if the GPU is not on `vfio-pci` yet: asks for confirmation, stops `ollama` and the `open-webui` container (they hold the GPU), writes `vfio` to the state file and reboots. If the GPU is already on `vfio-pci`: asks whether to start the VM, runs `virsh start` and opens the virt-manager console |
+| `stop` | graceful `virsh shutdown`, waits up to 30 s, then forces `virsh destroy`. The GPU stays on `vfio-pci`, so the VM can be restarted right away |
+| `release` | writes `nvidia` to the state file, unbinds both functions from `vfio-pci`, clears `driver_override`, reloads the nvidia modules and `snd_hda_intel`, rescans the PCI bus and sets cardwire back to `hybrid`. No reboot needed |
+| `hybrid` | same as `release`, but shuts the VM down first if it is running |
+
+The script only prepares the switch: the actual bind to `vfio-pci` is done
+by `gpu-vfio-boot.sh` at the next boot, reading the state file
+`/etc/gpu-vfio-mode`. Edit the `ollama` / `open-webui` lines in `start` to
+match the services that use your GPU.
+
 ## Repository layout
 
 ```
 scripts/
-  gpu-switch.sh                    control (vfio, release, status)
+  win11.sh                         full control: GPU switch + Windows 11 VM
+  gpu-switch.sh                    GPU switch only, no VM (vfio, release, status)
   gpu-vfio-boot.sh                 bind to vfio-pci at boot
   backup-gpu-passthrough.sh        saves the active config into the repo
 systemd/
@@ -61,7 +81,8 @@ config/
 
 | File | Destination on the system |
 |---|---|
-| `scripts/gpu-switch.sh` | wherever you like (e.g. `~/gpu-switch.sh`) |
+| `scripts/win11.sh` | wherever you like (e.g. `~/win11.sh`) |
+| `scripts/gpu-switch.sh` | optional, same as above without the VM part |
 | `scripts/gpu-vfio-boot.sh` | `/usr/local/bin/gpu-vfio-boot.sh` (chmod +x) |
 | `systemd/*.service` | `/etc/systemd/system/` |
 | `config/cardwire.toml` | `/etc/cardwire/cardwire.toml` |
