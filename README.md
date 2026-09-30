@@ -63,6 +63,7 @@ match the services that use your GPU.
 ## Repository layout
 
 ```
+install.sh                         installs everything and enables the services
 scripts/
   win11.sh                         full control: GPU switch + Windows 11 VM
   gpu-switch.sh                    GPU switch only, no VM (vfio, release, status)
@@ -89,7 +90,14 @@ config/
 | `config/nvidia.conf` | `/etc/modprobe.d/nvidia.conf` |
 | `config/gpu-vfio-mode` | `/etc/gpu-vfio-mode` |
 
-Then: `sudo systemctl daemon-reload`, enable the two services with
+The quick way is `./install.sh`: it copies every file to the destination
+above (keeping numbered backups of anything it replaces), installs
+`win11.sh` in your home, runs `daemon-reload` and enables both services.
+It leaves an existing `/etc/gpu-vfio-mode` untouched. Then reboot and run
+`~/win11.sh start`.
+
+To do it by hand instead: copy the files as in the table, then
+`sudo systemctl daemon-reload`, enable the two services with
 `systemctl enable`, and reboot.
 
 ## Notes
