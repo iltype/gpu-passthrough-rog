@@ -151,3 +151,10 @@ uno snapshot btrfs prima di provare.
 ## Licenza
 
 Rilasciato con licenza MIT (vedi `LICENSE`): uso, copia e modifica liberi.
+
+## Crediti
+
+Se riusi o adatti questo lavoro, cita l'autore e linka il repository
+originale: https://github.com/iltype/gpu-passthrough-rog
+(La licenza MIT richiede gia' di mantenere l'avviso di copyright nelle copie
+del codice.)
