@@ -23,8 +23,8 @@ inst() {
 
 echo "Installing scripts..."
 inst 755 scripts/gpu-vfio-boot.sh /usr/local/bin/gpu-vfio-boot.sh
-install -m 755 "$REPO/scripts/win11.sh" "$HOME/win11.sh"
-echo "  scripts/win11.sh -> $HOME/win11.sh"
+install -m 755 "$REPO/scripts/gpu-switch.sh" "$HOME/gpu-switch.sh"
+echo "  scripts/gpu-switch.sh -> $HOME/gpu-switch.sh"
 
 echo "Installing systemd units..."
 inst 644 systemd/gpu-vfio-boot.service /etc/systemd/system/gpu-vfio-boot.service
@@ -52,6 +52,6 @@ cat << 'MSG'
 Fatto. Prossimi passi:
   1. Se i moduli nvidia sono nell'initramfs: sudo limine-mkinitcpio -P
   2. Riavvia.
-  3. Passa la GPU al passthrough con: ~/win11.sh start (riavvia da solo)
-  4. Per tornare alla GPU sull'host: ~/win11.sh release
+  3. Passa la GPU al passthrough con: ~/gpu-switch.sh start (riavvia da solo)
+  4. Per tornare alla GPU sull'host: ~/gpu-switch.sh release
 MSG

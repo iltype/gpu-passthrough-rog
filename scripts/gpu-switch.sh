@@ -27,7 +27,7 @@ print_status() {
 
 ACTION="${1:-}"
 if [ -z "$ACTION" ]; then
-  echo "Usage: ~/win11.sh [start|release|status]"
+  echo "Usage: ~/gpu-switch.sh [start|release|status]"
   exit 1
 fi
 
@@ -80,6 +80,6 @@ release)
   ;;
 
 *)
-  echo "Usage: ~/win11.sh [start|release|status]"
+  echo "Usage: ~/gpu-switch.sh [start|release|status]"
   ;;
 esac
