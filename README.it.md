@@ -23,6 +23,7 @@ nvidia) a modalita' "passthrough" (vfio-pci) e viceversa.
 ## Software
 
 - CachyOS (Arch based)
+- Bootloader: limine
 
 ## Come funziona
 
@@ -100,6 +101,15 @@ Per farlo a mano: copia i file come in tabella, poi
 
 ## Note
 
+- **Bootloader**: lo switch non dipende dal bootloader. Il bind a
+  `vfio-pci` lo fa un servizio systemd al boot, non parametri del kernel
+  come `vfio-pci.ids=`, quindi dovrebbe funzionare uguale con GRUB,
+  systemd-boot o altri. Il bootloader conta solo per due cose: il comando
+  per rigenerare l'initramfs (qui `limine-mkinitcpio -P`; su sistemi GRUB
+  di solito `mkinitcpio -P` o `dracut`, a seconda della distro) e, se
+  l'IOMMU non e' gia' attivo sul tuo kernel, l'aggiunta del parametro IOMMU
+  alla riga di comando del kernel (su GRUB in `/etc/default/grub` piu'
+  `grub-mkconfig`). Verifica con `dmesg | grep -i iommu`.
 - **Modprobe**: `nvidia_drm modeset=1 fbdev=1`.
 - **cardwire**: `experimental_nvidia_block = true`; un'unita' systemd forza
   `cardwire set integrated` prima di spegnimento/riavvio, per evitare che il
