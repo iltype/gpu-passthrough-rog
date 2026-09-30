@@ -13,9 +13,6 @@ fi
 if ! command -v cardwire >/dev/null 2>&1; then
   echo "ATTENZIONE: cardwire non e' installato (AUR: cardwire). Gli script lo richiedono." >&2
 fi
-if ! command -v virsh >/dev/null 2>&1; then
-  echo "ATTENZIONE: virsh non trovato: win11.sh richiede libvirt per gestire la VM." >&2
-fi
 
 # Copia con backup numerato se il file di destinazione esiste gia'.
 inst() {
@@ -55,6 +52,6 @@ cat << 'MSG'
 Fatto. Prossimi passi:
   1. Se i moduli nvidia sono nell'initramfs: sudo limine-mkinitcpio -P
   2. Riavvia.
-  3. Avvia con: ~/win11.sh start   (poi, dopo il riavvio, di nuovo ~/win11.sh start)
+  3. Passa la GPU al passthrough con: ~/win11.sh start (riavvia da solo)
   4. Per tornare alla GPU sull'host: ~/win11.sh release
 MSG
