@@ -1,10 +1,13 @@
 #!/bin/bash
-# Passa la dGPU NVIDIA tra driver nvidia (host) e vfio-pci (passthrough).
-# Non avvia ne' gestisce nessuna VM: prepara solo la GPU.
+# Switches the NVIDIA dGPU between the nvidia driver (host) and vfio-pci (passthrough).
+# It does not start or manage any VM: it only prepares the GPU.
 set -uo pipefail
 
-GPU_VIDEO="0000:01:00.0"
-GPU_AUDIO="0000:01:00.1"
+CONF="/etc/gpu-passthrough.conf"
+# shellcheck disable=SC1090
+[ -f "$CONF" ] && . "$CONF"
+GPU_VIDEO="${GPU_VIDEO:-0000:01:00.0}"
+GPU_AUDIO="${GPU_AUDIO:-0000:01:00.1}"
 STATE_FILE="/etc/gpu-vfio-mode"
 
 get_driver() {
@@ -50,9 +53,18 @@ start)
     echo "Aborted."
     exit 0
   fi
-  echo "Stopping known GPU-heavy services so they don't auto-restart mid-boot..."
-  sudo systemctl stop ollama 2>/dev/null
-  docker stop open-webui 2>/dev/null
+  if command -v fuser >/dev/null 2>&1; then
+    busy="$(sudo fuser -v /dev/nvidia* 2>&1 || true)"
+    if [ -n "$busy" ]; then
+      echo "These processes are using the NVIDIA GPU (stop the ones you do not need):"
+      echo "$busy"
+      read -rp "Continue anyway? [y/N] " again
+      if [[ ! "$again" =~ ^[Yy]$ ]]; then
+        echo "Aborted."
+        exit 0
+      fi
+    fi
+  fi
   echo "vfio" | sudo tee "$STATE_FILE" >/dev/null
   echo "Requested. Rebooting now..."
   sudo reboot

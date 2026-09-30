@@ -1,6 +1,7 @@
 #!/bin/bash
 # Installs the GPU passthrough setup and enables the services.
-# Usage: ./install.sh   (as a normal user, uses sudo where needed)
+# Usage: ./install.sh          check the system, then install
+#        ./install.sh --check  only check if the system is compatible
 # Works with limine, GRUB, systemd-boot and other bootloaders: it detects
 # the initramfs tool and the bootloader, and explains what is left to do.
 set -euo pipefail
@@ -12,9 +13,19 @@ if [ "$(id -u)" -eq 0 ]; then
   exit 1
 fi
 
-if ! command -v cardwire >/dev/null 2>&1; then
-  echo "WARNING: cardwire is not installed (AUR: cardwire). The scripts need it." >&2
+# --- Compatibility check ----------------------------------------------------
+if [ "${1:-}" = "--check" ]; then
+  exec bash "$REPO/scripts/check-compat.sh"
 fi
+
+if ! bash "$REPO/scripts/check-compat.sh"; then
+  echo ""
+  read -rp "This system does not look compatible. Install anyway? [y/N] " force
+  [[ "$force" =~ ^[Yy]$ ]] || { echo "Aborted."; exit 1; }
+fi
+echo ""
+read -rp "Continue with the installation? [Y/n] " go
+[[ "$go" =~ ^[Nn]$ ]] && { echo "Aborted."; exit 0; }
 
 # Copy with a numbered backup if the destination already exists.
 inst() {
@@ -35,6 +46,20 @@ inst 644 systemd/cardwire-integrated-on-shutdown.service /etc/systemd/system/car
 echo "Installing config..."
 inst 644 config/cardwire.toml /etc/cardwire/cardwire.toml
 inst 644 config/nvidia.conf /etc/modprobe.d/nvidia.conf
+
+# GPU addresses: detected on this machine, never overwrite an existing file.
+if [ ! -f /etc/gpu-passthrough.conf ]; then
+  if DETECTED="$(bash "$REPO/scripts/check-compat.sh" --print-config)"; then
+    { echo "# PCI addresses of the NVIDIA GPU (detected by install.sh)."; echo "$DETECTED"; } \
+      | sudo tee /etc/gpu-passthrough.conf >/dev/null
+    echo "  detected GPU addresses -> /etc/gpu-passthrough.conf"
+  else
+    sudo install -D -m 644 "$REPO/config/gpu-passthrough.conf" /etc/gpu-passthrough.conf
+    echo "  GPU not detected: default addresses written, edit /etc/gpu-passthrough.conf"
+  fi
+else
+  echo "  /etc/gpu-passthrough.conf exists, left untouched"
+fi
 
 # Never overwrite an existing state file.
 if [ ! -f /etc/gpu-vfio-mode ]; then

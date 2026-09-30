@@ -5,12 +5,13 @@
 ![License](https://img.shields.io/github/license/iltype/gpu-passthrough-rog)
 ![Tested on](https://img.shields.io/badge/tested%20on-CachyOS-blue)
 
-[Versione italiana](README.it.md)
+[Versione italiana](README.it.md) | [Changelog](CHANGELOG.md)
 
 A working setup to detach the dedicated NVIDIA GPU of a hybrid laptop from
 the host and bind it to `vfio-pci`, while the host keeps running on the Intel
 iGPU. It includes the scripts to switch between "host" mode (nvidia driver)
-and "passthrough" mode (vfio-pci) and back.
+and "passthrough" mode (vfio-pci) and back, and a check that tells you if
+your computer is compatible before installing anything.
 
 ## My laptop
 
@@ -43,6 +44,27 @@ Made for a **hybrid laptop with an Intel iGPU and an NVIDIA dGPU**.
 - **Requires cardwire**, an AUR package: on non-Arch distributions it has to
   be built manually.
 
+To find out if your computer is compatible **before installing anything**:
+
+```
+./install.sh --check
+```
+
+It looks for an NVIDIA GPU, a second GPU for the host, IOMMU (and whether
+the GPU sits alone in its IOMMU group), cardwire, the nvidia driver and your
+initramfs tool, and prints `OK`, `WARN` or `FAIL` for each. Nothing is
+changed on the system. To see all IOMMU groups: `scripts/check-iommu.sh`.
+
+### Tested hardware
+
+| Laptop | CPU | GPUs | Distribution | Result |
+|---|---|---|---|---|
+| ASUS ROG Zephyrus M16 (2023) GU604VI | Intel i9-13900H | Intel Iris Xe + RTX 4070 Laptop | CachyOS, limine | works |
+
+Did you try it on your hardware? Please open an issue with the
+"Compatibility report" template: working or not, it helps others, and I
+will add it to this table.
+
 ## How it works
 
 Switching the dGPU to `vfio-pci` is only reliable **at boot**, before the
@@ -57,35 +79,37 @@ display manager or the compositor touch the GPU. The flow is:
 4. `gpu-switch.sh release` gives the GPU back to `nvidia` without rebooting
    and sets cardwire back to `hybrid`.
 
-PCI addresses used (adapt them to your system with `lspci -nn`):
-
-- GPU video: `0000:01:00.0`
-- GPU audio: `0000:01:00.1`
+The PCI addresses of the GPU are read from `/etc/gpu-passthrough.conf`,
+which `install.sh` fills with the addresses detected on your machine
+(`lspci -D -nn | grep -i nvidia` to check them).
 
 ## The `gpu-switch.sh` script
 
-`gpu-switch.sh` only switches the GPU: it does not create, start or stop any VM.
-The two PCI addresses above are variables at the top of the script. What you
-do with the GPU once it is on `vfio-pci` (VM, container...) is up to you.
+`gpu-switch.sh` only switches the GPU: it does not create, start or stop any
+VM. What you do with the GPU once it is on `vfio-pci` (VM, container...) is
+up to you.
 
 | Command | What it does |
 |---|---|
 | `status` | shows the driver bound to the GPU and audio functions |
-| `start` | if the GPU is not on `vfio-pci` yet: asks for confirmation, stops `ollama` and the `open-webui` container (they hold the GPU), writes `vfio` to the state file and reboots. If it is already on `vfio-pci`, it does nothing |
+| `start` | if the GPU is not on `vfio-pci` yet: lists the processes using the NVIDIA GPU, asks for confirmation, writes `vfio` to the state file and reboots. If it is already on `vfio-pci`, it does nothing |
 | `release` | writes `nvidia` to the state file, unbinds both functions from `vfio-pci`, clears `driver_override`, reloads the nvidia modules and `snd_hda_intel`, rescans the PCI bus and sets cardwire back to `hybrid`. No reboot needed |
 
 The script only prepares the switch: the actual bind to `vfio-pci` is done
 by `gpu-vfio-boot.sh` at the next boot, reading the state file
-`/etc/gpu-vfio-mode`. Edit the `ollama` / `open-webui` lines in `start` to
-match the services that use your GPU.
+`/etc/gpu-vfio-mode`. It does not stop any service by itself: close what
+uses the GPU (games, AI tools, CUDA containers...) before `start`.
 
 ## Repository layout
 
 ```
-install.sh                         installs everything and enables the services
+install.sh                         checks the system, installs, enables services
+uninstall.sh                       removes everything and restores backups
 scripts/
-  gpu-switch.sh                         GPU switch (start, release, status)
+  gpu-switch.sh                    GPU switch (start, release, status)
   gpu-vfio-boot.sh                 bind to vfio-pci at boot
+  check-compat.sh                  compatibility check
+  check-iommu.sh                   lists IOMMU groups
   backup-gpu-passthrough.sh        saves the active config into the repo
 systemd/
   gpu-vfio-boot.service
@@ -94,9 +118,35 @@ config/
   cardwire.toml
   nvidia.conf
   gpu-vfio-mode
+  gpu-passthrough.conf             default GPU PCI addresses
+examples/libvirt/                  optional Windows 11 VM example
+.github/ISSUE_TEMPLATE/            compatibility report template
+CHANGELOG.md
 ```
 
 ## Installation
+
+```
+git clone https://github.com/iltype/gpu-passthrough-rog.git
+cd gpu-passthrough-rog
+./install.sh
+```
+
+`install.sh` first runs the compatibility check and asks before going on if
+something is wrong. Then it copies every file to the destination below
+(keeping numbered backups of anything it replaces), installs
+`gpu-switch.sh` in your home, writes `/etc/gpu-passthrough.conf` with the
+detected GPU addresses, runs `daemon-reload` and enables both services. It
+leaves an existing `/etc/gpu-vfio-mode` untouched. It also detects your
+bootloader (limine, GRUB, systemd-boot) and initramfs tool
+(`limine-mkinitcpio`, `mkinitcpio`, `dracut`, `update-initramfs`), offers to
+rebuild the initramfs, and checks whether IOMMU is active, printing the
+exact kernel parameter and where to put it for your bootloader if it is not
+(it never edits the bootloader config by itself). Then reboot and run
+`~/gpu-switch.sh start` to switch the GPU to passthrough.
+
+To remove everything: `./uninstall.sh` (run `~/gpu-switch.sh release` first
+if the GPU is on `vfio-pci`). It restores the files that install.sh backed up.
 
 | File | Destination on the system |
 |---|---|
@@ -106,33 +156,21 @@ config/
 | `config/cardwire.toml` | `/etc/cardwire/cardwire.toml` |
 | `config/nvidia.conf` | `/etc/modprobe.d/nvidia.conf` |
 | `config/gpu-vfio-mode` | `/etc/gpu-vfio-mode` |
-
-The quick way is `./install.sh`: it copies every file to the destination
-above (keeping numbered backups of anything it replaces), installs
-`gpu-switch.sh` in your home, runs `daemon-reload` and enables both services.
-It leaves an existing `/etc/gpu-vfio-mode` untouched. It also detects your
-bootloader (limine, GRUB, systemd-boot) and initramfs tool (`limine-mkinitcpio`,
-`mkinitcpio`, `dracut`, `update-initramfs`), offers to rebuild the initramfs,
-and checks whether IOMMU is active, printing the exact kernel parameter and
-where to put it for your bootloader if it is not (it never edits the
-bootloader config by itself). Then reboot and run
-`~/gpu-switch.sh start` to switch the GPU to passthrough.
+| `config/gpu-passthrough.conf` | `/etc/gpu-passthrough.conf` (edit the addresses) |
 
 To do it by hand instead: copy the files as in the table, then
 `sudo systemctl daemon-reload`, enable the two services with
 `systemctl enable`, and reboot.
 
+## Optional: Windows 11 VM
+
+The scripts do not touch any VM. If you want to use the GPU in a Windows 11
+VM with libvirt, `examples/libvirt/` has a working definition (without
+UUID, MAC and personal paths) and the extra files it needs. See
+`examples/libvirt/README.md`.
+
 ## Notes
 
-- **Bootloader**: the switch does not depend on the bootloader. The bind to
-  `vfio-pci` is done by a systemd service at boot, not by kernel parameters
-  such as `vfio-pci.ids=`, so it should work the same with GRUB,
-  systemd-boot or others. The bootloader only matters for two things: the
-  command to regenerate the initramfs (here `limine-mkinitcpio -P`; on
-  GRUB systems typically `mkinitcpio -P` or `dracut`, depending on the
-  distro) and, if IOMMU is not already active on your kernel, adding the
-  IOMMU parameter to the kernel command line (in `/etc/default/grub` plus
-  `grub-mkconfig` on GRUB). Check with `dmesg | grep -i iommu`.
 - **Modprobe**: `nvidia_drm modeset=1 fbdev=1`.
 - **cardwire**: `experimental_nvidia_block = true`; a systemd unit forces
   `cardwire set integrated` before shutdown/reboot, so the compositor does
@@ -144,9 +182,18 @@ To do it by hand instead: copy the files as in the table, then
   `cardwire set hybrid|integrated` commands used in the scripts, since
   options and behaviour may change. After updating, run
   `backup-gpu-passthrough.sh` again to save the working config.
-- **Services that block the switch**: any service using the GPU (e.g.
-  Ollama, CUDA-based containers, `nvidia-powerd`) prevents the `nvidia`
-  module from unloading: stop them before rebooting.
+- **Bootloader**: the switch does not depend on the bootloader. The bind to
+  `vfio-pci` is done by a systemd service at boot, not by kernel parameters
+  such as `vfio-pci.ids=`, so it should work the same with GRUB,
+  systemd-boot or others. The bootloader only matters for two things: the
+  command to regenerate the initramfs (here `limine-mkinitcpio -P`; on
+  GRUB systems typically `mkinitcpio -P` or `dracut`, depending on the
+  distro) and, if IOMMU is not already active on your kernel, adding the
+  IOMMU parameter to the kernel command line (in `/etc/default/grub` plus
+  `grub-mkconfig` on GRUB). Check with `dmesg | grep -i iommu`.
+- **Services that block the switch**: any process using the GPU (e.g. AI
+  tools, CUDA-based containers, `nvidia-powerd`) prevents the `nvidia`
+  module from unloading. `gpu-switch.sh start` lists them before rebooting.
 - **supergfxctl** is deprecated and logind-based logout detection does not
   work on this system, which is why it was replaced by cardwire.
 - cardwire's `integrated` mode hides the PCI device and interferes with the

@@ -2,8 +2,11 @@
 set -uo pipefail
 
 STATE_FILE="/etc/gpu-vfio-mode"
-GPU_VIDEO="0000:01:00.0"
-GPU_AUDIO="0000:01:00.1"
+CONF="/etc/gpu-passthrough.conf"
+# shellcheck disable=SC1090
+[ -f "$CONF" ] && . "$CONF"
+GPU_VIDEO="${GPU_VIDEO:-0000:01:00.0}"
+GPU_AUDIO="${GPU_AUDIO:-0000:01:00.1}"
 LOG="/var/log/gpu-vfio-boot.log"
 
 exec > "$LOG" 2>&1
