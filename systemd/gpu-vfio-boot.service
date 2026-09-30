@@ -1,7 +1,7 @@
 [Unit]
 Description=Bind GPU to vfio-pci before the display manager starts (if requested)
 DefaultDependencies=no
-Before=ly@tty1.service cardwired.service
+Before=ly@tty1.service display-manager.service cardwired.service
 After=local-fs.target
 
 [Service]
