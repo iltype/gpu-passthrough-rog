@@ -30,6 +30,21 @@ nvidia) a modalita' "passthrough" (vfio-pci) e viceversa.
 - CachyOS (Arch based)
 - Bootloader: limine
 
+## Compatibilita'
+
+Pensato per un **portatile ibrido con iGPU Intel e dGPU NVIDIA**.
+
+- **Intel + NVIDIA** (il mio caso): la configurazione per cui e' costruito e
+  testato questo repository. Il parametro IOMMU e' `intel_iommu=on`.
+- **AMD + NVIDIA**: dovrebbe funzionare quasi uguale, ma il parametro IOMMU
+  diventa `amd_iommu=on` (l'installer lo rileva). Non testato.
+- **GPU dedicata AMD**: non supportata, gli script scaricano i moduli
+  `nvidia*` e si appoggiano alla gestione NVIDIA di cardwire.
+- **Desktop o portatile senza iGPU**: non supportato, l'host resterebbe senza
+  schermo.
+- **Richiede cardwire**, un pacchetto AUR: su distribuzioni non Arch va
+  compilato a mano.
+
 ## Come funziona
 
 Il passaggio della dGPU a `vfio-pci` e' affidabile solo se fatto **al boot**,
