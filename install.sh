@@ -166,6 +166,14 @@ check_compat() {
 }
 
 # ---------------------------------------------------------------------------
+# Tests on paths that may be root-only (e.g. /etc/cardwire). Uses sudo if
+# SUDO_OK=1, otherwise falls back to a plain test as the current user.
+# ---------------------------------------------------------------------------
+SUDO_OK=0
+rtest() { if [ "$SUDO_OK" = 1 ]; then sudo test "$@"; else test "$@"; fi; }
+rsame() { if [ "$SUDO_OK" = 1 ]; then sudo cmp -s "$1" "$2"; else cmp -s "$1" "$2"; fi; }
+
+# ---------------------------------------------------------------------------
 # Another vfio boot setup already on this system (not ours)?
 # ---------------------------------------------------------------------------
 find_other_setup() {
@@ -194,13 +202,20 @@ do_dry_run() {
 
   echo ""
   echo "DRY RUN: nothing will be changed on this system."
+  echo "(sudo is only used to read root-only folders such as /etc/cardwire.)"
+  if sudo -v; then
+    SUDO_OK=1
+  else
+    SUDO_OK=0
+    echo "NOTE: no sudo access: files in root-only folders may be shown as NEW by mistake."
+  fi
   echo ""
   echo "Files that install would write:"
   for item in "${items[@]}"; do
     IFS='|' read -r mode src dst <<< "$item"
-    if [ ! -e "$dst" ]; then
+    if ! rtest -e "$dst"; then
       echo "  NEW      $dst"
-    elif cmp -s "$REPO/$src" "$dst"; then
+    elif rsame "$REPO/$src" "$dst"; then
       echo "  REPLACE  $dst (same content as the repo; a numbered backup is still made)"
     else
       echo "  REPLACE  $dst (different from the repo version; the current file is kept as a numbered backup)"
@@ -213,12 +228,12 @@ do_dry_run() {
   fi
 
   detect_gpu
-  if [ -e "$CONF" ]; then
+  if rtest -e "$CONF"; then
     echo "  KEEP     $CONF (already exists, left untouched)"
   else
     echo "  NEW      $CONF (GPU: ${GPU_VIDEO:-not detected}, audio: ${GPU_AUDIO:-none})"
   fi
-  if [ -e /etc/gpu-vfio-mode ]; then
+  if rtest -e /etc/gpu-vfio-mode; then
     echo "  KEEP     /etc/gpu-vfio-mode (already exists, left untouched)"
   else
     echo "  NEW      /etc/gpu-vfio-mode (default: nvidia, i.e. GPU stays on the host)"
@@ -413,16 +428,17 @@ do_uninstall() {
   sudo systemctl disable gpu-vfio-boot.service 2>/dev/null
   sudo systemctl disable cardwire-integrated-on-shutdown.service 2>/dev/null
 
+  SUDO_OK=1
   for f in "${files[@]}"; do
     # The installer keeps numbered backups: file.~1~ is the original, if there was one.
-    if [ -e "$f.~1~" ]; then
+    if rtest -e "$f.~1~"; then
       sudo mv -f "$f.~1~" "$f"
       echo "  restored $f"
-    elif [ -e "$f" ]; then
+    elif rtest -e "$f"; then
       sudo rm -f "$f"
       echo "  removed  $f"
     fi
-    sudo rm -f "$f".~*~ 2>/dev/null
+    sudo sh -c 'rm -f "$1".~*~' _ "$f" 2>/dev/null
   done
   rm -f "$HOME/gpu-switch.sh"
   echo "  removed  $HOME/gpu-switch.sh"

@@ -11,7 +11,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
   issues. Every entry is also a command (`./install.sh check`, `install`,
   `uninstall`, `iommu`, `status`, `start`, `release`, `report`).
 - `./install.sh install --dry-run`: shows what install would do (new /
-  replaced / kept files, services) without changing anything. Install now
+  replaced / kept files, services) without changing anything; sudo is only
+  used to read root-only folders such as /etc/cardwire. Install now
   also warns, with "no" as default, if another vfio boot setup is already on
   the system.
 - Compatibility check (NVIDIA dGPU, host GPU, IOMMU, IOMMU group, cardwire,
