@@ -50,7 +50,7 @@ sudo systemctl enable cardwire-integrated-on-shutdown.service
 cat << 'MSG'
 
 Fatto. Prossimi passi:
-  1. Se i moduli nvidia sono nell'initramfs: sudo limine-mkinitcpio -P
+  1. Se i moduli nvidia sono nell'initramfs, rigeneralo (limine: sudo limine-mkinitcpio -P)
   2. Riavvia.
   3. Passa la GPU al passthrough con: ~/gpu-switch.sh start (riavvia da solo)
   4. Per tornare alla GPU sull'host: ~/gpu-switch.sh release

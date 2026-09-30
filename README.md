@@ -21,6 +21,7 @@ and "passthrough" mode (vfio-pci) and back.
 ## Software
 
 - CachyOS (Arch based)
+- Bootloader: limine
 
 ## How it works
 
@@ -98,6 +99,15 @@ To do it by hand instead: copy the files as in the table, then
 
 ## Notes
 
+- **Bootloader**: the switch does not depend on the bootloader. The bind to
+  `vfio-pci` is done by a systemd service at boot, not by kernel parameters
+  such as `vfio-pci.ids=`, so it should work the same with GRUB,
+  systemd-boot or others. The bootloader only matters for two things: the
+  command to regenerate the initramfs (here `limine-mkinitcpio -P`; on
+  GRUB systems typically `mkinitcpio -P` or `dracut`, depending on the
+  distro) and, if IOMMU is not already active on your kernel, adding the
+  IOMMU parameter to the kernel command line (in `/etc/default/grub` plus
+  `grub-mkconfig` on GRUB). Check with `dmesg | grep -i iommu`.
 - **Modprobe**: `nvidia_drm modeset=1 fbdev=1`.
 - **cardwire**: `experimental_nvidia_block = true`; a systemd unit forces
   `cardwire set integrated` before shutdown/reboot, so the compositor does
