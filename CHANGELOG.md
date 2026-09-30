@@ -6,11 +6,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
-- `scripts/check-compat.sh`: checks if the computer is compatible (NVIDIA
-  dGPU, host GPU, IOMMU, IOMMU group, cardwire, initramfs tool). Also run
-  by `install.sh` before installing; `./install.sh --check` runs only it.
-- `scripts/check-iommu.sh`: lists IOMMU groups and highlights the NVIDIA one.
-- `uninstall.sh`: removes what `install.sh` installed and restores backups.
+- `install.sh` is now a menu with check, install, uninstall, IOMMU groups,
+  GPU status, switch to passthrough, release, and backup. Every entry is
+  also a command (`./install.sh check`, `install`, `uninstall`, `iommu`,
+  `status`, `start`, `release`, `backup`).
+- Compatibility check (NVIDIA dGPU, host GPU, IOMMU, IOMMU group, cardwire,
+  initramfs tool), run before installing; `./install.sh check` runs only it.
 - `/etc/gpu-passthrough.conf`: GPU PCI addresses, detected at install time
   and read by the scripts (no more hardcoded addresses).
 - `examples/libvirt/`: optional Windows 11 VM example (libvirt XML,

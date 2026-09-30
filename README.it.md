@@ -53,7 +53,7 @@ Per sapere se il tuo computer e' compatibile **prima di installare nulla**:
 Cerca una GPU NVIDIA, una seconda GPU per l'host, l'IOMMU (e se la GPU e' da
 sola nel suo gruppo IOMMU), cardwire, il driver nvidia e lo strumento per
 l'initramfs, e stampa `OK`, `WARN` o `FAIL` per ognuno. Non cambia nulla sul
-sistema. Per vedere tutti i gruppi IOMMU: `scripts/check-iommu.sh`.
+sistema. Per vedere tutti i gruppi IOMMU: `./install.sh iommu`.
 
 ### Hardware testato
 
@@ -103,14 +103,11 @@ la GPU (giochi, strumenti AI, container CUDA...) prima di `start`.
 ## Struttura del repository
 
 ```
-install.sh                         controlla il sistema, installa, abilita i servizi
-uninstall.sh                       rimuove tutto e ripristina i backup
+install.sh                         un solo script: controllo, installazione, disinstallazione,
+                                   gruppi IOMMU, scorciatoie per lo switch GPU, backup (menu)
 scripts/
   gpu-switch.sh                    switch GPU (start, release, status)
   gpu-vfio-boot.sh                 bind a vfio-pci al boot
-  check-compat.sh                  controllo di compatibilita'
-  check-iommu.sh                   elenca i gruppi IOMMU
-  backup-gpu-passthrough.sh        salva la config attiva nel repository
 systemd/
   gpu-vfio-boot.service
   cardwire-integrated-on-shutdown.service
@@ -132,7 +129,25 @@ cd gpu-passthrough-rog
 ./install.sh
 ```
 
-`install.sh` esegue prima il controllo di compatibilita' e, se qualcosa non
+`install.sh` apre un menu:
+
+```
+1) Check if this computer is compatible
+2) Install
+3) Uninstall
+4) Show IOMMU groups
+5) GPU status (host or passthrough)
+6) Switch the GPU to passthrough (reboots)
+7) Give the GPU back to the host
+8) Save the active system config into this repository
+0) Exit
+```
+
+Ogni voce e' disponibile anche come comando, per esempio `./install.sh check`,
+`./install.sh install`, `./install.sh uninstall` (`./install.sh --help` li
+elenca tutti). Il menu e' in inglese.
+
+**Install** esegue prima il controllo di compatibilita' e, se qualcosa non
 va, chiede prima di continuare. Poi copia ogni file nella destinazione
 indicata sotto (tenendo backup numerati di cio' che sostituisce), installa
 `gpu-switch.sh` nella tua home, scrive `/etc/gpu-passthrough.conf` con gli
@@ -142,12 +157,12 @@ bootloader (limine, GRUB, systemd-boot) e lo strumento per l'initramfs
 (`limine-mkinitcpio`, `mkinitcpio`, `dracut`, `update-initramfs`), propone di
 rigenerare l'initramfs e controlla se l'IOMMU e' attivo: se non lo e',
 stampa il parametro kernel esatto e dove metterlo per il tuo bootloader (non
-modifica mai da solo la configurazione del bootloader). Poi riavvia e lancia
-`~/gpu-switch.sh start` per passare la GPU al passthrough.
+modifica mai da solo la configurazione del bootloader). Poi riavvia e passa
+la GPU al passthrough con la voce 6 (o `~/gpu-switch.sh start`).
 
-Per rimuovere tutto: `./uninstall.sh` (lancia prima `~/gpu-switch.sh release`
-se la GPU e' su `vfio-pci`). Ripristina i file di cui install.sh aveva fatto
-il backup.
+**Uninstall** rimuove tutto e ripristina i file di cui l'installazione aveva
+fatto il backup. Se la GPU e' su `vfio-pci`, restituiscila prima all'host
+(voce 7).
 
 | File | Destinazione sul sistema |
 |---|---|
@@ -182,7 +197,7 @@ UUID, MAC e percorsi personali) e i file extra necessari. Vedi
   l'unita' `cardwire-integrated-on-shutdown.service` e i comandi
   `cardwire set hybrid|integrated` usati negli script, perche' opzioni e
   comportamento potrebbero cambiare. Dopo l'aggiornamento riesegui
-  `backup-gpu-passthrough.sh` per salvare la config funzionante.
+  `./install.sh backup` per salvare la config funzionante.
 - **Bootloader**: lo switch non dipende dal bootloader. Il bind a
   `vfio-pci` lo fa un servizio systemd al boot, non parametri del kernel
   come `vfio-pci.ids=`, quindi dovrebbe funzionare uguale con GRUB,

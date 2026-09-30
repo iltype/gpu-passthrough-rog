@@ -53,7 +53,7 @@ To find out if your computer is compatible **before installing anything**:
 It looks for an NVIDIA GPU, a second GPU for the host, IOMMU (and whether
 the GPU sits alone in its IOMMU group), cardwire, the nvidia driver and your
 initramfs tool, and prints `OK`, `WARN` or `FAIL` for each. Nothing is
-changed on the system. To see all IOMMU groups: `scripts/check-iommu.sh`.
+changed on the system. To see all IOMMU groups: `./install.sh iommu`.
 
 ### Tested hardware
 
@@ -103,14 +103,11 @@ uses the GPU (games, AI tools, CUDA containers...) before `start`.
 ## Repository layout
 
 ```
-install.sh                         checks the system, installs, enables services
-uninstall.sh                       removes everything and restores backups
+install.sh                         one script: check, install, uninstall, IOMMU groups,
+                                   GPU switch shortcuts, backup (interactive menu)
 scripts/
   gpu-switch.sh                    GPU switch (start, release, status)
   gpu-vfio-boot.sh                 bind to vfio-pci at boot
-  check-compat.sh                  compatibility check
-  check-iommu.sh                   lists IOMMU groups
-  backup-gpu-passthrough.sh        saves the active config into the repo
 systemd/
   gpu-vfio-boot.service
   cardwire-integrated-on-shutdown.service
@@ -132,7 +129,25 @@ cd gpu-passthrough-rog
 ./install.sh
 ```
 
-`install.sh` first runs the compatibility check and asks before going on if
+`install.sh` opens a menu:
+
+```
+1) Check if this computer is compatible
+2) Install
+3) Uninstall
+4) Show IOMMU groups
+5) GPU status (host or passthrough)
+6) Switch the GPU to passthrough (reboots)
+7) Give the GPU back to the host
+8) Save the active system config into this repository
+0) Exit
+```
+
+Every entry is also available as a command, for example `./install.sh check`,
+`./install.sh install`, `./install.sh uninstall` (`./install.sh --help` lists
+them all).
+
+**Install** first runs the compatibility check and asks before going on if
 something is wrong. Then it copies every file to the destination below
 (keeping numbered backups of anything it replaces), installs
 `gpu-switch.sh` in your home, writes `/etc/gpu-passthrough.conf` with the
@@ -142,11 +157,12 @@ bootloader (limine, GRUB, systemd-boot) and initramfs tool
 (`limine-mkinitcpio`, `mkinitcpio`, `dracut`, `update-initramfs`), offers to
 rebuild the initramfs, and checks whether IOMMU is active, printing the
 exact kernel parameter and where to put it for your bootloader if it is not
-(it never edits the bootloader config by itself). Then reboot and run
-`~/gpu-switch.sh start` to switch the GPU to passthrough.
+(it never edits the bootloader config by itself). Then reboot and switch the
+GPU to passthrough with entry 6 (or `~/gpu-switch.sh start`).
 
-To remove everything: `./uninstall.sh` (run `~/gpu-switch.sh release` first
-if the GPU is on `vfio-pci`). It restores the files that install.sh backed up.
+**Uninstall** removes everything and restores the files that install had
+backed up. If the GPU is on `vfio-pci`, give it back to the host first
+(entry 7).
 
 | File | Destination on the system |
 |---|---|
@@ -181,7 +197,7 @@ UUID, MAC and personal paths) and the extra files it needs. See
   `cardwire-integrated-on-shutdown.service` unit and the
   `cardwire set hybrid|integrated` commands used in the scripts, since
   options and behaviour may change. After updating, run
-  `backup-gpu-passthrough.sh` again to save the working config.
+  `./install.sh backup` again to save the working config.
 - **Bootloader**: the switch does not depend on the bootloader. The bind to
   `vfio-pci` is done by a systemd service at boot, not by kernel parameters
   such as `vfio-pci.ids=`, so it should work the same with GRUB,
