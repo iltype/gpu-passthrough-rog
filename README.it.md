@@ -29,13 +29,13 @@ nvidia) a modalita' "passthrough" (vfio-pci) e viceversa.
 Il passaggio della dGPU a `vfio-pci` e' affidabile solo se fatto **al boot**,
 prima che il display manager o il compositor tocchino la GPU. Il flusso e':
 
-1. `win11.sh start` (o `gpu-switch.sh vfio`) scrive `vfio` in `/etc/gpu-vfio-mode` e riavvia.
+1. `win11.sh start` scrive `vfio` in `/etc/gpu-vfio-mode` e riavvia.
 2. Al boot, `gpu-vfio-boot.service` (prima del display manager e di
    `cardwired`) esegue `gpu-vfio-boot.sh`, che legge il file di stato,
    scarica i moduli `nvidia*` e associa GPU e audio HDMI a `vfio-pci`
    tramite `driver_override` + `drivers_probe`.
 3. L'host resta sulla iGPU Intel; la dGPU e' pronta per essere assegnata.
-4. `win11.sh release` (o `gpu-switch.sh release`) rimette la GPU a `nvidia` senza riavviare e
+4. `win11.sh release` rimette la GPU a `nvidia` senza riavviare e
    riporta cardwire in modalita' `hybrid`.
 
 Indirizzi PCI usati (da adattare al proprio sistema con `lspci -nn`):
@@ -45,18 +45,15 @@ Indirizzi PCI usati (da adattare al proprio sistema con `lspci -nn`):
 
 ## Lo script `win11.sh`
 
-`win11.sh` e' lo script di controllo completo. Presuppone una VM libvirt
-chiamata `win11` e i due indirizzi PCI indicati sopra (sono variabili in
-cima al file). `gpu-switch.sh` contiene la stessa logica GPU senza nulla
-che riguardi la VM.
+`win11.sh` si limita a spostare la GPU: non crea, avvia o ferma nessuna VM.
+I due indirizzi PCI indicati sopra sono variabili in cima allo script. Cosa
+farci una volta che la GPU e' su `vfio-pci` (VM, container...) dipende da te.
 
 | Comando | Cosa fa |
 |---|---|
-| `status` | mostra il driver associato a GPU e audio, e se la VM e' in esecuzione |
-| `start` | se la GPU non e' ancora su `vfio-pci`: chiede conferma, ferma `ollama` e il container `open-webui` (tengono occupata la GPU), scrive `vfio` nel file di stato e riavvia. Se la GPU e' gia' su `vfio-pci`: chiede se avviare la VM, esegue `virsh start` e apre la console di virt-manager |
-| `stop` | `virsh shutdown` pulito, attende fino a 30 s, poi forza con `virsh destroy`. La GPU resta su `vfio-pci`, quindi la VM si puo' riavviare subito |
+| `status` | mostra il driver associato a GPU e audio |
+| `start` | se la GPU non e' ancora su `vfio-pci`: chiede conferma, ferma `ollama` e il container `open-webui` (tengono occupata la GPU), scrive `vfio` nel file di stato e riavvia. Se e' gia' su `vfio-pci`, non fa nulla |
 | `release` | scrive `nvidia` nel file di stato, stacca le due funzioni da `vfio-pci`, azzera `driver_override`, ricarica i moduli nvidia e `snd_hda_intel`, riscansiona il bus PCI e rimette cardwire su `hybrid`. Non serve riavviare |
-| `hybrid` | come `release`, ma prima spegne la VM se e' in esecuzione |
 
 Lo script prepara solo il passaggio: il bind effettivo a `vfio-pci` lo fa
 `gpu-vfio-boot.sh` al boot successivo, leggendo il file di stato
@@ -68,8 +65,7 @@ in base ai servizi che usano la tua GPU.
 ```
 install.sh                         installa tutto e abilita i servizi
 scripts/
-  win11.sh                         controllo completo: switch GPU + VM Windows 11
-  gpu-switch.sh                    solo switch GPU, senza VM (vfio, release, status)
+  win11.sh                         switch GPU (start, release, status)
   gpu-vfio-boot.sh                 bind a vfio-pci al boot
   backup-gpu-passthrough.sh        salva la config attiva nel repository
 systemd/
@@ -86,7 +82,6 @@ config/
 | File | Destinazione sul sistema |
 |---|---|
 | `scripts/win11.sh` | dove preferisci (es. `~/win11.sh`) |
-| `scripts/gpu-switch.sh` | opzionale, come sopra senza la parte VM |
 | `scripts/gpu-vfio-boot.sh` | `/usr/local/bin/gpu-vfio-boot.sh` (chmod +x) |
 | `systemd/*.service` | `/etc/systemd/system/` |
 | `config/cardwire.toml` | `/etc/cardwire/cardwire.toml` |
@@ -97,7 +92,7 @@ Il modo rapido e' `./install.sh`: copia ogni file nella destinazione
 indicata (tenendo backup numerati di cio' che sostituisce), installa
 `win11.sh` nella tua home, esegue `daemon-reload` e abilita i due servizi.
 Non tocca un eventuale `/etc/gpu-vfio-mode` gia' presente. Poi riavvia e
-lancia `~/win11.sh start`.
+lancia `~/win11.sh start` per passare la GPU al passthrough.
 
 Per farlo a mano: copia i file come in tabella, poi
 `sudo systemctl daemon-reload`, abilita i due servizi con
