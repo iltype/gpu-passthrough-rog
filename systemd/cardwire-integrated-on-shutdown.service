@@ -1,0 +1,13 @@
+[Unit]
+Description=Force cardwire to Integrated mode before shutdown
+DefaultDependencies=no
+Before=shutdown.target reboot.target halt.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/true
+ExecStop=/usr/bin/cardwire set integrated
+
+[Install]
+WantedBy=multi-user.target
