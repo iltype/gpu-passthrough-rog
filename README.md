@@ -148,8 +148,15 @@ Every entry is also available as a command, for example `./install.sh check`,
 `./install.sh install`, `./install.sh uninstall` (`./install.sh --help` lists
 them all).
 
+To see what install would do **without changing anything**, run
+`./install.sh install --dry-run`: it lists every file as `NEW`, `REPLACE` or
+`KEEP`, the services it would enable, and warns if another vfio boot setup is
+already on the system. Recommended if the GPU passthrough already works on
+your machine.
+
 **Install** first runs the compatibility check and asks before going on if
-something is wrong. Then it copies every file to the destination below
+something is wrong (and, if it finds another vfio boot setup on the system,
+it asks again with "no" as the default). Then it copies every file to the destination below
 (keeping numbered backups of anything it replaces), installs
 `gpu-switch.sh` in your home, writes `/etc/gpu-passthrough.conf` with the
 detected GPU addresses, runs `daemon-reload` and enables both services. It

@@ -10,6 +10,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
   GPU status, switch to passthrough, release, and a report for compatibility
   issues. Every entry is also a command (`./install.sh check`, `install`,
   `uninstall`, `iommu`, `status`, `start`, `release`, `report`).
+- `./install.sh install --dry-run`: shows what install would do (new /
+  replaced / kept files, services) without changing anything. Install now
+  also warns, with "no" as default, if another vfio boot setup is already on
+  the system.
 - Compatibility check (NVIDIA dGPU, host GPU, IOMMU, IOMMU group, cardwire,
   initramfs tool), run before installing; `./install.sh check` runs only it.
 - `/etc/gpu-passthrough.conf`: GPU PCI addresses, detected at install time

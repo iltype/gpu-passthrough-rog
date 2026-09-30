@@ -148,8 +148,15 @@ Ogni voce e' disponibile anche come comando, per esempio `./install.sh check`,
 `./install.sh install`, `./install.sh uninstall` (`./install.sh --help` li
 elenca tutti). Il menu e' in inglese.
 
+Per vedere cosa farebbe l'installazione **senza cambiare nulla**, lancia
+`./install.sh install --dry-run`: elenca ogni file come `NEW`, `REPLACE` o
+`KEEP`, i servizi che abiliterebbe, e avvisa se sul sistema c'e' gia' un altro
+impianto vfio al boot. Consigliato se il passthrough funziona gia' sul tuo
+computer.
+
 **Install** esegue prima il controllo di compatibilita' e, se qualcosa non
-va, chiede prima di continuare. Poi copia ogni file nella destinazione
+va, chiede prima di continuare (e, se trova un altro impianto vfio al boot,
+chiede di nuovo con "no" come risposta predefinita). Poi copia ogni file nella destinazione
 indicata sotto (tenendo backup numerati di cio' che sostituisce), installa
 `gpu-switch.sh` nella tua home, scrive `/etc/gpu-passthrough.conf` con gli
 indirizzi GPU rilevati, esegue `daemon-reload` e abilita i due servizi. Non

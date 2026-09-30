@@ -5,6 +5,7 @@
 # Usage: ./install.sh              interactive menu
 #        ./install.sh check        check if this computer is compatible (also: --check)
 #        ./install.sh install      check, then install
+#        ./install.sh install --dry-run   show what install would do, change nothing
 #        ./install.sh uninstall    remove everything and restore backups
 #        ./install.sh iommu        list IOMMU groups
 #        ./install.sh status       show which driver the GPU is using
@@ -165,18 +166,118 @@ check_compat() {
 }
 
 # ---------------------------------------------------------------------------
+# Another vfio boot setup already on this system (not ours)?
+# ---------------------------------------------------------------------------
+find_other_setup() {
+  local f
+  for f in /etc/systemd/system/*vfio*.service /etc/*vfio*mode; do
+    [ -e "$f" ] || continue
+    case "$f" in
+      /etc/systemd/system/gpu-vfio-boot.service|/etc/gpu-vfio-mode) continue ;;
+    esac
+    echo "$f"
+  done
+}
+
+# ---------------------------------------------------------------------------
+# 2b. Dry run: show what install would do, change nothing
+# ---------------------------------------------------------------------------
+do_dry_run() {
+  local item mode src dst other rebuild bl
+  local -a items=(
+    "755|scripts/gpu-vfio-boot.sh|/usr/local/bin/gpu-vfio-boot.sh"
+    "644|systemd/gpu-vfio-boot.service|/etc/systemd/system/gpu-vfio-boot.service"
+    "644|systemd/cardwire-integrated-on-shutdown.service|/etc/systemd/system/cardwire-integrated-on-shutdown.service"
+    "644|config/cardwire.toml|/etc/cardwire/cardwire.toml"
+    "644|config/nvidia.conf|/etc/modprobe.d/nvidia.conf"
+  )
+
+  echo ""
+  echo "DRY RUN: nothing will be changed on this system."
+  echo ""
+  echo "Files that install would write:"
+  for item in "${items[@]}"; do
+    IFS='|' read -r mode src dst <<< "$item"
+    if [ ! -e "$dst" ]; then
+      echo "  NEW      $dst"
+    elif cmp -s "$REPO/$src" "$dst"; then
+      echo "  REPLACE  $dst (same content as the repo; a numbered backup is still made)"
+    else
+      echo "  REPLACE  $dst (different from the repo version; the current file is kept as a numbered backup)"
+    fi
+  done
+  if [ -e "$HOME/gpu-switch.sh" ]; then
+    echo "  REPLACE  $HOME/gpu-switch.sh (no backup)"
+  else
+    echo "  NEW      $HOME/gpu-switch.sh"
+  fi
+
+  detect_gpu
+  if [ -e "$CONF" ]; then
+    echo "  KEEP     $CONF (already exists, left untouched)"
+  else
+    echo "  NEW      $CONF (GPU: ${GPU_VIDEO:-not detected}, audio: ${GPU_AUDIO:-none})"
+  fi
+  if [ -e /etc/gpu-vfio-mode ]; then
+    echo "  KEEP     /etc/gpu-vfio-mode (already exists, left untouched)"
+  else
+    echo "  NEW      /etc/gpu-vfio-mode (default: nvidia, i.e. GPU stays on the host)"
+  fi
+
+  echo ""
+  echo "Services that install would enable:"
+  echo "  gpu-vfio-boot.service"
+  echo "  cardwire-integrated-on-shutdown.service"
+
+  other="$(find_other_setup)"
+  if [ -n "$other" ]; then
+    echo ""
+    echo "WARNING: another vfio boot setup is already on this system:"
+    echo "$other" | sed 's/^/  /'
+    echo "Installing would add a second, parallel setup with its own state file."
+    echo "Both boot services would run at every boot."
+  fi
+
+  echo ""
+  bl="$(detect_bootloader)"
+  echo "Bootloader detected: $bl"
+  if command -v limine-mkinitcpio >/dev/null 2>&1; then rebuild="sudo limine-mkinitcpio -P"
+  elif command -v mkinitcpio >/dev/null 2>&1; then rebuild="sudo mkinitcpio -P"
+  elif command -v dracut >/dev/null 2>&1; then rebuild="sudo dracut --force --regenerate-all"
+  elif command -v update-initramfs >/dev/null 2>&1; then rebuild="sudo update-initramfs -u -k all"
+  else rebuild=""; fi
+  if [ -n "$rebuild" ]; then
+    echo "Install would ask before rebuilding the initramfs with: $rebuild"
+  fi
+  echo "Install never edits the bootloader configuration."
+  echo ""
+  echo "Nothing was changed."
+  return 0
+}
+
+# ---------------------------------------------------------------------------
 # 2. Install
 # ---------------------------------------------------------------------------
 do_install() {
-  local force go
+  local force go other
   if ! check_compat; then
     echo ""
     read -rp "This system does not look compatible. Install anyway? [y/N] " force
     [[ "$force" =~ ^[Yy]$ ]] || { echo "Aborted."; return 1; }
   fi
   echo ""
-  read -rp "Continue with the installation? [Y/n] " go
-  if [[ "$go" =~ ^[Nn]$ ]]; then echo "Aborted."; return 0; fi
+  other="$(find_other_setup)"
+  if [ -n "$other" ]; then
+    echo "WARNING: another vfio boot setup is already on this system:"
+    echo "$other" | sed 's/^/  /'
+    echo "Installing would add a second, parallel setup (two boot services, two state files)."
+    echo "Tip: './install.sh install --dry-run' shows exactly what would change."
+    read -rp "Install anyway? [y/N] " go
+    if [[ ! "$go" =~ ^[Yy]$ ]]; then echo "Aborted."; return 0; fi
+  else
+    read -rp "Continue with the installation? [Y/n] " go
+    if [[ "$go" =~ ^[Nn]$ ]]; then echo "Aborted."; return 0; fi
+  fi
 
   (
     set -euo pipefail
@@ -444,6 +545,19 @@ MENU
     esac
   done
 }
+
+DRY=0
+ARGS=()
+for a in "$@"; do
+  if [ "$a" = "--dry-run" ]; then DRY=1; else ARGS+=("$a"); fi
+done
+set -- "${ARGS[@]+"${ARGS[@]}"}"
+if [ "$DRY" = 1 ]; then
+  case "${1:-install}" in
+    install) check_compat || true; do_dry_run; exit 0 ;;
+    *) echo "--dry-run only works with 'install'." >&2; exit 1 ;;
+  esac
+fi
 
 case "${1:-menu}" in
   menu)             menu ;;
