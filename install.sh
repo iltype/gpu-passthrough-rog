@@ -381,7 +381,9 @@ switch() {
 do_report() {
   local vendor product cpu distro gpus iommu group="n/a"
   vendor="$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null || echo unknown)"
+  vendor="${vendor/ASUSTeK COMPUTER INC./ASUS}"
   product="$(cat /sys/class/dmi/id/product_name 2>/dev/null || echo unknown)"
+  product="$(echo "$product" | sed -E 's/([^ ]+)_\1$/\1/')"   # "X_X" -> "X"
   cpu="$(grep -m1 'model name' /proc/cpuinfo | sed 's/^[^:]*: //')"
   distro="$( . /etc/os-release 2>/dev/null; echo "${PRETTY_NAME:-unknown}" )"
   gpus="$(lspci -D -nn 2>/dev/null | grep -E '\[(0300|0302|0380)\]' | sed -e 's/^[^ ]* //' -e 's/^[^:]*: //' -e 's/ (rev.*//' | sed 's/^/  - /')"

@@ -17,7 +17,7 @@ dice se il tuo computer e' compatibile prima di installare qualsiasi cosa.
 
 | Componente | Dettaglio |
 |---|---|
-| Modello | ASUS ROG Zephyrus M16 (2023), GU604VI |
+| Modello | ASUS ROG Zephyrus G16 (2023), GU603VI |
 | CPU | Intel Core i9-13900H |
 | GPU integrata | Intel Iris Xe (host) |
 | GPU dedicata | NVIDIA GeForce RTX 4070 Laptop, 8 GB VRAM |
@@ -59,7 +59,7 @@ sistema. Per vedere tutti i gruppi IOMMU: `./install.sh iommu`.
 
 | Laptop | CPU | GPU | Distribuzione | Risultato |
 |---|---|---|---|---|
-| ASUS ROG Zephyrus M16 (2023) GU604VI | Intel i9-13900H | Intel Iris Xe + RTX 4070 Laptop | CachyOS, limine | funziona |
+| ASUS ROG Zephyrus G16 (2023) GU603VI | Intel i9-13900H | Intel Iris Xe + RTX 4070 Laptop | CachyOS, limine | funziona |
 
 Hai provato sul tuo hardware? Lancia `./install.sh report` (voce 8 del
 menu), poi apri una issue con il modello "Compatibility report" e incolla
