@@ -92,7 +92,12 @@ config/
 Il modo rapido e' `./install.sh`: copia ogni file nella destinazione
 indicata (tenendo backup numerati di cio' che sostituisce), installa
 `gpu-switch.sh` nella tua home, esegue `daemon-reload` e abilita i due servizi.
-Non tocca un eventuale `/etc/gpu-vfio-mode` gia' presente. Poi riavvia e
+Non tocca un eventuale `/etc/gpu-vfio-mode` gia' presente. Riconosce anche
+il bootloader (limine, GRUB, systemd-boot) e lo strumento per l'initramfs
+(`limine-mkinitcpio`, `mkinitcpio`, `dracut`, `update-initramfs`), propone
+di rigenerare l'initramfs e controlla se l'IOMMU e' attivo: se non lo e',
+stampa il parametro kernel esatto e dove metterlo per il tuo bootloader (non
+modifica mai da solo la configurazione del bootloader). Poi riavvia e
 lancia `~/gpu-switch.sh start` per passare la GPU al passthrough.
 
 Per farlo a mano: copia i file come in tabella, poi
