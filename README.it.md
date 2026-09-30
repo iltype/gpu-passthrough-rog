@@ -61,9 +61,10 @@ sistema. Per vedere tutti i gruppi IOMMU: `./install.sh iommu`.
 |---|---|---|---|---|
 | ASUS ROG Zephyrus M16 (2023) GU604VI | Intel i9-13900H | Intel Iris Xe + RTX 4070 Laptop | CachyOS, limine | funziona |
 
-Hai provato sul tuo hardware? Apri una issue con il modello
-"Compatibility report": che funzioni o no, aiuta gli altri, e lo aggiungero'
-a questa tabella.
+Hai provato sul tuo hardware? Lancia `./install.sh report` (voce 8 del
+menu), poi apri una issue con il modello "Compatibility report" e incolla
+l'output: che funzioni o no, aiuta gli altri, e lo aggiungero' a questa
+tabella. Il report non contiene hostname, numeri di serie o indirizzi MAC.
 
 ## Come funziona
 
@@ -104,7 +105,7 @@ la GPU (giochi, strumenti AI, container CUDA...) prima di `start`.
 
 ```
 install.sh                         un solo script: controllo, installazione, disinstallazione,
-                                   gruppi IOMMU, scorciatoie per lo switch GPU, backup (menu)
+                                   gruppi IOMMU, scorciatoie per lo switch GPU, report (menu)
 scripts/
   gpu-switch.sh                    switch GPU (start, release, status)
   gpu-vfio-boot.sh                 bind a vfio-pci al boot
@@ -139,7 +140,7 @@ cd gpu-passthrough-rog
 5) GPU status (host or passthrough)
 6) Switch the GPU to passthrough (reboots)
 7) Give the GPU back to the host
-8) Save the active system config into this repository
+8) Generate a report for a compatibility issue
 0) Exit
 ```
 
@@ -196,8 +197,7 @@ UUID, MAC e percorsi personali) e i file extra necessari. Vedi
   Dopo ogni aggiornamento del pacchetto vanno ricontrollati `cardwire.toml`,
   l'unita' `cardwire-integrated-on-shutdown.service` e i comandi
   `cardwire set hybrid|integrated` usati negli script, perche' opzioni e
-  comportamento potrebbero cambiare. Dopo l'aggiornamento riesegui
-  `./install.sh backup` per salvare la config funzionante.
+  comportamento potrebbero cambiare.
 - **Bootloader**: lo switch non dipende dal bootloader. Il bind a
   `vfio-pci` lo fa un servizio systemd al boot, non parametri del kernel
   come `vfio-pci.ids=`, quindi dovrebbe funzionare uguale con GRUB,

@@ -5,6 +5,9 @@ title: "[Report] <laptop model> - works / partially / fails"
 labels: compatibility
 ---
 
+Tip: run `./install.sh report` (menu entry 8) and paste its output here,
+it fills the fields below for you. Then check the "Result" line.
+
 **Laptop / computer model:**
 
 **CPU:** (e.g. Intel i9-13900H, AMD Ryzen 9 7940HS)
@@ -17,7 +20,7 @@ labels: compatibility
 
 **Result:** works / works with changes / does not work
 
-**Output of `./install.sh --check`:**
+**Output of `./install.sh check`:**
 
 ```
 paste here

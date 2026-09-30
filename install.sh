@@ -10,7 +10,7 @@
 #        ./install.sh status       show which driver the GPU is using
 #        ./install.sh start        switch the GPU to passthrough (reboots)
 #        ./install.sh release      give the GPU back to the host
-#        ./install.sh backup       save the active system config into this repo
+#        ./install.sh report       print a report to paste in a compatibility issue
 #
 # Run as a normal user: sudo is used where needed.
 set -uo pipefail
@@ -36,6 +36,23 @@ detect_gpu() {
     prefix="${GPU_VIDEO%.*}"
     audio_line="$(echo "$PCI" | grep "^$prefix\." | grep '\[0403\]' | head -1 || true)"
     GPU_AUDIO="${audio_line%% *}"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Bootloader detection: prints limine, grub, systemd-boot or unknown
+# ---------------------------------------------------------------------------
+detect_bootloader() {
+  if command -v limine-mkinitcpio >/dev/null 2>&1 || [ -f /boot/limine.conf ] \
+     || [ -f /boot/limine/limine.conf ] || [ -f /boot/EFI/limine/limine.conf ]; then
+    echo "limine"
+  elif [ -f /etc/default/grub ] || command -v grub-mkconfig >/dev/null 2>&1 \
+       || command -v grub2-mkconfig >/dev/null 2>&1; then
+    echo "grub"
+  elif [ -d /boot/loader ] || [ -d /efi/loader ] || [ -d /boot/efi/loader ]; then
+    echo "systemd-boot"
+  else
+    echo "unknown"
   fi
 }
 
@@ -214,16 +231,8 @@ do_install() {
   ) || { echo "Installation failed."; return 1; }
 
   # --- Bootloader detection ---
-  local bootloader="unknown" rebuild="" ans param
-  if command -v limine-mkinitcpio >/dev/null 2>&1 || [ -f /boot/limine.conf ] \
-     || [ -f /boot/limine/limine.conf ] || [ -f /boot/EFI/limine/limine.conf ]; then
-    bootloader="limine"
-  elif [ -f /etc/default/grub ] || command -v grub-mkconfig >/dev/null 2>&1 \
-       || command -v grub2-mkconfig >/dev/null 2>&1; then
-    bootloader="grub"
-  elif [ -d /boot/loader ] || [ -d /efi/loader ] || [ -d /boot/efi/loader ]; then
-    bootloader="systemd-boot"
-  fi
+  local bootloader rebuild="" ans param
+  bootloader="$(detect_bootloader)"
   echo "Detected bootloader: $bootloader"
 
   # --- Initramfs ---
@@ -367,18 +376,35 @@ switch() {
 }
 
 # ---------------------------------------------------------------------------
-# Backup: copy the active system config into this repository
+# Report to paste in a compatibility issue (no hostname, serials or MAC)
 # ---------------------------------------------------------------------------
-do_backup() {
-  sudo cp /usr/local/bin/gpu-vfio-boot.sh "$REPO/scripts/" 2>/dev/null
-  sudo cp /etc/systemd/system/gpu-vfio-boot.service "$REPO/systemd/" 2>/dev/null
-  sudo cp /etc/systemd/system/cardwire-integrated-on-shutdown.service "$REPO/systemd/" 2>/dev/null
-  sudo cp /etc/cardwire/cardwire.toml "$REPO/config/" 2>/dev/null
-  sudo cp /etc/modprobe.d/nvidia.conf "$REPO/config/" 2>/dev/null
-  sudo cp /etc/gpu-vfio-mode "$REPO/config/" 2>/dev/null
-  sudo cp "$CONF" "$REPO/config/" 2>/dev/null
-  sudo chown -R "$USER:$USER" "$REPO"
-  echo "Config saved in: $REPO"
+do_report() {
+  local vendor product cpu distro gpus iommu group="n/a"
+  vendor="$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null || echo unknown)"
+  product="$(cat /sys/class/dmi/id/product_name 2>/dev/null || echo unknown)"
+  cpu="$(grep -m1 'model name' /proc/cpuinfo | sed 's/^[^:]*: //')"
+  distro="$( . /etc/os-release 2>/dev/null; echo "${PRETTY_NAME:-unknown}" )"
+  gpus="$(lspci -D -nn 2>/dev/null | grep -E '\[(0300|0302|0380)\]' | sed -e 's/^[^ ]* //' -e 's/^[^:]*: //' -e 's/ (rev.*//' | sed 's/^/  - /')"
+  if [ -d /sys/kernel/iommu_groups ] && [ -n "$(ls -A /sys/kernel/iommu_groups 2>/dev/null)" ]; then iommu="active"; else iommu="not active"; fi
+
+  echo "Copy everything between the lines into a new 'Compatibility report' issue."
+  echo "Nothing personal is included (no hostname, serial numbers or MAC addresses)."
+  echo "----------------------------------------------------------------------"
+  echo "**Laptop / computer model:** $vendor $product"
+  echo "**CPU:** ${cpu:-unknown}"
+  echo "**GPUs:**"
+  echo "${gpus:-  - unknown}"
+  echo "**Distribution and version:** $distro (kernel $(uname -r))"
+  echo "**Bootloader:** $(detect_bootloader)"
+  echo "**IOMMU:** $iommu"
+  echo "**Result:** works / works with changes / does not work  (edit this line)"
+  echo ""
+  echo "**Output of the compatibility check:**"
+  echo '```'
+  check_compat
+  echo '```'
+  echo "**What did you have to change, or what went wrong?** (write here)"
+  echo "----------------------------------------------------------------------"
   return 0
 }
 
@@ -398,7 +424,7 @@ GPU passthrough
   5) GPU status (host or passthrough)
   6) Switch the GPU to passthrough (reboots)
   7) Give the GPU back to the host
-  8) Save the active system config into this repository
+  8) Generate a report for a compatibility issue
   0) Exit
 MENU
     read -rp "Choose [0-8]: " choice || exit 0
@@ -410,7 +436,7 @@ MENU
       5) switch status ;;
       6) switch start ;;
       7) switch release ;;
-      8) do_backup ;;
+      8) do_report ;;
       0|q|Q) exit 0 ;;
       *) echo "Invalid choice." ;;
     esac
@@ -426,7 +452,7 @@ case "${1:-menu}" in
   status)           switch status ;;
   start)            switch start ;;
   release)          switch release ;;
-  backup)           do_backup ;;
+  report)           do_report ;;
   -h|--help|help)   sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//' ;;
   *)                echo "Unknown option: $1 (try --help)" >&2; exit 1 ;;
 esac

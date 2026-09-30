@@ -61,9 +61,10 @@ changed on the system. To see all IOMMU groups: `./install.sh iommu`.
 |---|---|---|---|---|
 | ASUS ROG Zephyrus M16 (2023) GU604VI | Intel i9-13900H | Intel Iris Xe + RTX 4070 Laptop | CachyOS, limine | works |
 
-Did you try it on your hardware? Please open an issue with the
-"Compatibility report" template: working or not, it helps others, and I
-will add it to this table.
+Did you try it on your hardware? Run `./install.sh report` (menu entry 8),
+then open an issue with the "Compatibility report" template and paste the
+output: working or not, it helps others, and I will add it to this table.
+The report contains no hostname, serial numbers or MAC addresses.
 
 ## How it works
 
@@ -104,7 +105,7 @@ uses the GPU (games, AI tools, CUDA containers...) before `start`.
 
 ```
 install.sh                         one script: check, install, uninstall, IOMMU groups,
-                                   GPU switch shortcuts, backup (interactive menu)
+                                   GPU switch shortcuts, issue report (interactive menu)
 scripts/
   gpu-switch.sh                    GPU switch (start, release, status)
   gpu-vfio-boot.sh                 bind to vfio-pci at boot
@@ -139,7 +140,7 @@ cd gpu-passthrough-rog
 5) GPU status (host or passthrough)
 6) Switch the GPU to passthrough (reboots)
 7) Give the GPU back to the host
-8) Save the active system config into this repository
+8) Generate a report for a compatibility issue
 0) Exit
 ```
 
@@ -196,8 +197,7 @@ UUID, MAC and personal paths) and the extra files it needs. See
   update, re-check `cardwire.toml`, the
   `cardwire-integrated-on-shutdown.service` unit and the
   `cardwire set hybrid|integrated` commands used in the scripts, since
-  options and behaviour may change. After updating, run
-  `./install.sh backup` again to save the working config.
+  options and behaviour may change.
 - **Bootloader**: the switch does not depend on the bootloader. The bind to
   `vfio-pci` is done by a systemd service at boot, not by kernel parameters
   such as `vfio-pci.ids=`, so it should work the same with GRUB,
