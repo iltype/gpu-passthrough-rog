@@ -149,3 +149,10 @@ before trying it.
 ## License
 
 Released under the MIT License (see `LICENSE`): free to use, copy and modify.
+
+## Credits
+
+If you reuse or adapt this work, please credit the author and link back to
+the original repository: https://github.com/iltype/gpu-passthrough-rog
+(The MIT License already requires keeping the copyright notice in copies of
+the code.)
