@@ -28,6 +28,21 @@ and "passthrough" mode (vfio-pci) and back.
 - CachyOS (Arch based)
 - Bootloader: limine
 
+## Compatibility
+
+Made for a **hybrid laptop with an Intel iGPU and an NVIDIA dGPU**.
+
+- **Intel + NVIDIA** (my case): the setup this repository is built and
+  tested for. The IOMMU parameter is `intel_iommu=on`.
+- **AMD + NVIDIA**: should work almost the same, but the IOMMU parameter
+  becomes `amd_iommu=on` (the installer detects it). Not tested.
+- **AMD dedicated GPU**: not supported, the scripts unload the `nvidia*`
+  modules and rely on cardwire's NVIDIA handling.
+- **Desktop or laptop without an iGPU**: not supported, the host would be
+  left without a display.
+- **Requires cardwire**, an AUR package: on non-Arch distributions it has to
+  be built manually.
+
 ## How it works
 
 Switching the dGPU to `vfio-pci` is only reliable **at boot**, before the
