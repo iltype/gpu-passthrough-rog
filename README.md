@@ -27,13 +27,13 @@ and "passthrough" mode (vfio-pci) and back.
 Switching the dGPU to `vfio-pci` is only reliable **at boot**, before the
 display manager or the compositor touch the GPU. The flow is:
 
-1. `win11.sh start` writes `vfio` to `/etc/gpu-vfio-mode` and reboots.
+1. `gpu-switch.sh start` writes `vfio` to `/etc/gpu-vfio-mode` and reboots.
 2. At boot, `gpu-vfio-boot.service` (ordered before the display manager and
    `cardwired`) runs `gpu-vfio-boot.sh`, which reads the state file, unloads
    the `nvidia*` modules and binds the GPU and its HDMI audio function to
    `vfio-pci` via `driver_override` + `drivers_probe`.
 3. The host stays on the Intel iGPU; the dGPU is ready to be assigned.
-4. `win11.sh release` gives the GPU back to `nvidia` without rebooting
+4. `gpu-switch.sh release` gives the GPU back to `nvidia` without rebooting
    and sets cardwire back to `hybrid`.
 
 PCI addresses used (adapt them to your system with `lspci -nn`):
@@ -41,9 +41,9 @@ PCI addresses used (adapt them to your system with `lspci -nn`):
 - GPU video: `0000:01:00.0`
 - GPU audio: `0000:01:00.1`
 
-## The `win11.sh` script
+## The `gpu-switch.sh` script
 
-`win11.sh` only switches the GPU: it does not create, start or stop any VM.
+`gpu-switch.sh` only switches the GPU: it does not create, start or stop any VM.
 The two PCI addresses above are variables at the top of the script. What you
 do with the GPU once it is on `vfio-pci` (VM, container...) is up to you.
 
@@ -63,7 +63,7 @@ match the services that use your GPU.
 ```
 install.sh                         installs everything and enables the services
 scripts/
-  win11.sh                         GPU switch (start, release, status)
+  gpu-switch.sh                         GPU switch (start, release, status)
   gpu-vfio-boot.sh                 bind to vfio-pci at boot
   backup-gpu-passthrough.sh        saves the active config into the repo
 systemd/
@@ -79,7 +79,7 @@ config/
 
 | File | Destination on the system |
 |---|---|
-| `scripts/win11.sh` | wherever you like (e.g. `~/win11.sh`) |
+| `scripts/gpu-switch.sh` | wherever you like (e.g. `~/gpu-switch.sh`) |
 | `scripts/gpu-vfio-boot.sh` | `/usr/local/bin/gpu-vfio-boot.sh` (chmod +x) |
 | `systemd/*.service` | `/etc/systemd/system/` |
 | `config/cardwire.toml` | `/etc/cardwire/cardwire.toml` |
@@ -88,9 +88,9 @@ config/
 
 The quick way is `./install.sh`: it copies every file to the destination
 above (keeping numbered backups of anything it replaces), installs
-`win11.sh` in your home, runs `daemon-reload` and enables both services.
+`gpu-switch.sh` in your home, runs `daemon-reload` and enables both services.
 It leaves an existing `/etc/gpu-vfio-mode` untouched. Then reboot and run
-`~/win11.sh start` to switch the GPU to passthrough.
+`~/gpu-switch.sh start` to switch the GPU to passthrough.
 
 To do it by hand instead: copy the files as in the table, then
 `sudo systemctl daemon-reload`, enable the two services with
