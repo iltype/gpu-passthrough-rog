@@ -1,5 +1,10 @@
 # GPU passthrough on an ASUS ROG laptop (RTX 4070)
 
+![Last commit](https://img.shields.io/github/last-commit/iltype/gpu-passthrough-rog)
+![Release](https://img.shields.io/github/v/release/iltype/gpu-passthrough-rog)
+![License](https://img.shields.io/github/license/iltype/gpu-passthrough-rog)
+![Tested on](https://img.shields.io/badge/tested%20on-CachyOS-blue)
+
 [Versione italiana](README.it.md)
 
 A working setup to detach the dedicated NVIDIA GPU of a hybrid laptop from
@@ -140,3 +145,7 @@ This setup is tailored to my hardware. On another laptop, PCI addresses,
 IOMMU groups and most likely the MUX behaviour will differ. Use it as a
 reference, not as a recipe to copy blindly, and always take a btrfs snapshot
 before trying it.
+
+## License
+
+Released under the MIT License (see `LICENSE`): free to use, copy and modify.

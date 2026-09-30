@@ -1,5 +1,10 @@
 # GPU passthrough su laptop ASUS ROG (RTX 4070)
 
+![Last commit](https://img.shields.io/github/last-commit/iltype/gpu-passthrough-rog)
+![Release](https://img.shields.io/github/v/release/iltype/gpu-passthrough-rog)
+![License](https://img.shields.io/github/license/iltype/gpu-passthrough-rog)
+![Tested on](https://img.shields.io/badge/tested%20on-CachyOS-blue)
+
 [English version](README.md)
 
 Italiano | [English](README.en.md)
@@ -142,3 +147,7 @@ Configurazione pensata per il mio hardware. Su un altro portatile cambiano
 indirizzi PCI, gruppi IOMMU e con tutta probabilita' il comportamento del MUX.
 Usala come riferimento, non come ricetta da copiare alla cieca, e tieni sempre
 uno snapshot btrfs prima di provare.
+
+## Licenza
+
+Rilasciato con licenza MIT (vedi `LICENSE`): uso, copia e modifica liberi.
